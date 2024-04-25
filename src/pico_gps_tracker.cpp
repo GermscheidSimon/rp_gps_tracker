@@ -34,8 +34,8 @@ void on_uart_rx() {
         std::cout << "New Msg:" << std::string(newNmeaMessage);
     } else {
         std::cout << "Nothing to report\n";
-    }
-}
+    };
+};
 
 int main() {
     std::string printString = "Hello from String literal\n";
@@ -67,6 +67,7 @@ int main() {
     stdio_init_all();
     while (true) {
 
+        states::ConcreteSateService().initialize();
         printf("somestring\n");
         on_uart_rx();
         gpio_put(LED_PIN, 1);
@@ -74,5 +75,5 @@ int main() {
         gpio_put(LED_PIN, 0);
         sleep_ms(250);
         sleep_ms(1000);
-    }
-}
+    };
+};

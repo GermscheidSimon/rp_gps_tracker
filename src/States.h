@@ -1,3 +1,11 @@
-class ConcreteState;
-class ConcreteSateService;
+#pragma once
 
+namespace states {
+    class ConcreteSateService
+        {
+            int initialState;
+
+            public:
+            void initialize();
+        };
+}
