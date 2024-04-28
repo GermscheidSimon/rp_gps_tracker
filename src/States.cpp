@@ -1,116 +1,59 @@
 #include <string>
-#include "States.h"
 #include "iostream"
 #include <map>
 #include "string"
+#include "States.h"
 
 using namespace std;
 
-namespace state {
+int ConcreteState::run() const{
+    return 1;
+}
 
-    class ConcreteState {
-        public:
-            string name;
-            int errorCode;
-    };
-
-    enum States {
-        INIT,
-        READGPS,
-        EVALCOORD,
-        CONNECT
-    };
-
-
-    map<States, map<int, ConcreteState*>> stateTransitionTable = {
-        {
-            States::INIT, {
-                {0, new ReadingGPS()},
-            }
-        },
-        {
-            States::READGPS, {
-                {0, new ReadingGPS()},
-                {1, new EvaluateCoord()}
-            }
-        },
-        {
-            States::EVALCOORD, {
-                {0, new ReadingGPS()},
-                {1, new Connect()}
-            }
-        },
-        {
-            States::CONNECT, {
-                {0, new ReadingGPS()}
-            }
-        }
-    };
-
-    class ConcreteSateService {
+Initial::Initial() {
     
-        int initialSate = 0;
+}
+int Initial::run() const{
+    std::cout << "initializing: " << name;
+    return 0;
+}
 
-        public: 
-            void Initialize() {
-                
-        }
-    };
+ReadingGPS::ReadingGPS() {
 
-    class Initial: public ConcreteState {
+}
+int ReadingGPS::run() const{
+    std::cout << "ReadingGPS: " << name;
+    return 0;
+}
 
-        public: 
-            int stateId = state::INIT;
-            string name = "Initial";
+EvaluateCoord::EvaluateCoord() {
 
-            int run() {
-                std::cout << "initializing: " << name;
+}
+int EvaluateCoord::run() const {
+    std::cout << "EvaluateCoord: " << name;
+    return 0;
+}
 
-                return 0;
+Connect::Connect() {
 
-            };
-    };
+}
+int Connect::run() const {
+    std::cout << "Connect: " << name;
+    return 0;
+}
 
-    class ReadingGPS: public ConcreteState {
+void ConcreteStateService::Initialize() {
+    std::cout << "Connect: ";
+    while(true) {
+        const ConcreteState& nextState = getNextState(currentState, currentStateErrorCode);
+        std::cout << "nextState name:" + nextState.name + "\n";
+        int currentState = nextState.stateId;
+        int currentStateErrorCode = nextState.run();
+    }
+};
 
-        public:
-            int stateId = state::READGPS;
-            string name = "ReadingGPS";
-
-            int run() {
-                cout << "initializing: " << name;
-
-                return 0;
-
-            };
-    };
-
-
-     class EvaluateCoord: public ConcreteState {
-
-        public: 
-            int stateId = state::EVALCOORD;
-            string name = "EvaluateCoord";
-
-            int run() {
-                std::cout << "EvaluateCoord: " << name;
-
-                return 0;
-
-            };
-    };
-
-    class Connect: public ConcreteState {
-
-        public: 
-            int stateId = state::EVALCOORD;
-            string name = "Connect";
-
-            int run() {
-                std::cout << "Connect: " << name;
-
-                return 0;
-
-            };
-    };
+const ConcreteState& ConcreteStateService::getNextState(StatesEnum currentState, int currentStateErrorCode) {
+    std::cout << "Error:" + std::to_string(currentStateErrorCode);
+    const ConcreteState& nextState = ConcreteStateService::stateTransitionTable[currentState][currentStateErrorCode];
+    return nextState;
 };

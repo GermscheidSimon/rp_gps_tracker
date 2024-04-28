@@ -66,14 +66,15 @@ int main() {
 
     stdio_init_all();
     while (true) {
-
-        states::ConcreteSateService().initialize();
-        printf("somestring\n");
         on_uart_rx();
         gpio_put(LED_PIN, 1);
         sleep_ms(250);
         gpio_put(LED_PIN, 0);
         sleep_ms(250);
         sleep_ms(1000);
+        printf("somestring\n");
+        ConcreteStateService().Initialize();
+        printf("somestring\n");
+
     };
 };

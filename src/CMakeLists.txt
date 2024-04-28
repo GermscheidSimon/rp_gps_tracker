@@ -1,8 +1,10 @@
 add_executable(pico_gps_tracker
         pico_gps_tracker.cpp
+        states.cpp
         )
 
 target_link_libraries(pico_gps_tracker pico_stdlib pico_stdio_uart)
+
 # create map/bin/hex file etc.
 pico_add_extra_outputs(pico_gps_tracker)
 
