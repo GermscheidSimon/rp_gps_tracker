@@ -72,9 +72,40 @@ int main() {
         gpio_put(LED_PIN, 0);
         sleep_ms(250);
         sleep_ms(1000);
-        printf("somestring\n");
-        ConcreteStateService().Initialize();
-        printf("somestring\n");
+        ReadingGPS* _readingGPS = new ReadingGPS();
+        EvaluateCoord* _evaluateCoord = new EvaluateCoord();
+        Connect* _connect = new Connect();
+
+        map<int, ConcreteState*> Init = {
+            {0, _readingGPS}
+        };
+
+        map<int, ConcreteState*> ReadingGPS = {
+            {0, _readingGPS},
+            {1, _evaluateCoord}
+        };
+
+        map<int, ConcreteState*> EvaluateCoord = {
+            {0, _readingGPS},
+            {1, _connect}
+        };
+
+        map<int, ConcreteState*> Connect = {
+            {0, _readingGPS}
+        };
+
+    
+        map<StatesEnum, map<int, ConcreteState*>> stateTable =
+        {
+            { StatesEnum::INIT, Init },
+            { StatesEnum::READGPS, ReadingGPS },
+            { StatesEnum::EVALCOORD, EvaluateCoord },
+            { StatesEnum::CONNECT, Connect}
+        };
+
+        std::string printString = "Hello from String literal\n";
+        printf("%s\n", printString.c_str());
+        ConcreteStateService(stateTable).Initialize();
 
     };
 };

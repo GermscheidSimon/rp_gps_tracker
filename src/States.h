@@ -12,94 +12,46 @@ enum StatesEnum {
     CONNECT
 };
 
-class ConcreteState 
-{
-    public:
-        StatesEnum stateId;
-        string name;
-        int errorCode;
-        virtual int run() const;
+class ConcreteState {
+public:
+    string name;
+    StatesEnum id;
+    ConcreteState(string stateName, StatesEnum stateID) : name(stateName), id(stateID) {};
+    virtual int run();
 };
 
-class Initial: public ConcreteState {
-
-    public: 
-        Initial();
-        StatesEnum stateId = INIT;
-        string name = "Initial";
-        int run() const;
+class Initial : public ConcreteState {
+public:
+    Initial();
+    int run();
 };
 
-class ReadingGPS: public ConcreteState {
-
-    public:
-        ReadingGPS();
-        StatesEnum stateId = StatesEnum::READGPS;
-        string name = "ReadingGPS";
-        int run() const;
+class ReadingGPS : public ConcreteState {
+public:
+    ReadingGPS();
+    int run();
 };
 
-class EvaluateCoord: public ConcreteState {
-
-    public: 
-        StatesEnum stateId = StatesEnum::EVALCOORD;
-        string name = "EvaluateCoord";
-        EvaluateCoord();
-        int run() const;
+class EvaluateCoord : public ConcreteState {
+public:
+    EvaluateCoord();
+    int run();
 };
 
-class Connect: public ConcreteState {
-
-    public: 
-        StatesEnum stateId = StatesEnum::EVALCOORD;
-        string name = "Connect";
-        Connect();
-        int run() const;
+class Connect : public ConcreteState {
+public:
+    Connect();
+    int run();
 };
 
 class ConcreteStateService {
-    private:
-        StatesEnum initialSate;
-        int currentStateErrorCode;
-        StatesEnum currentState;
-    public:
-        ReadingGPS _readingGPS;
-        EvaluateCoord _evaluateCoord;
-        Connect _connect;
 
-        map<StatesEnum, map<int, ConcreteState>> stateTransitionTable = {
-            {
-                StatesEnum::INIT, {
-                    {0, _readingGPS},
-                }
-            },
-            {
-                StatesEnum::READGPS, {
-                    {0, _readingGPS},
-                    {1, _evaluateCoord}
-                }
-            },
-            {
-                StatesEnum::EVALCOORD, {
-                    {0, _readingGPS},
-                    {1, _connect}
-                }
-            },
-            {
-                StatesEnum::CONNECT, {
-                    {0, _readingGPS}
-                }
-            }
-        };
 
-        ConcreteStateService() {
-            currentState = initialSate;
-            currentStateErrorCode = 0;
-            _readingGPS = ReadingGPS();
-            _evaluateCoord = EvaluateCoord();
-            _connect = Connect();
-        };
-
-        const ConcreteState& getNextState(StatesEnum currentState, int currentStateErrorCode);
-        void Initialize();
+public:
+    map<StatesEnum, map<int, ConcreteState*>> _stateTransitionTable;
+    int currentStateErrorCode = 0;
+    StatesEnum currentState = INIT;
+    ConcreteStateService(map<StatesEnum, map<int, ConcreteState*>> stateTransitionTable);
+    const ConcreteState getNextState(StatesEnum currentState, int currentStateErrorCode);
+    void Initialize();
 };
