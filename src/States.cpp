@@ -49,15 +49,15 @@ ConcreteStateService::ConcreteStateService(map<StatesEnum, map<int, ConcreteStat
 void ConcreteStateService::Initialize() {
     std::cout << "Starting State Machine: ";
     while (true) {
-        ConcreteState nextState = getNextState(currentState, currentStateErrorCode);
-        std::cout << "Next State: " << nextState.name << "\n";
-        currentState = nextState.id;
-        currentStateErrorCode = nextState.run();
+        ConcreteState* nextState = getNextState(currentState, currentStateErrorCode);
+        std::cout << "Next State: " << nextState->name << "\n";
+        currentState = nextState->id;
+        currentStateErrorCode = nextState->run();
     }
 }
 
-const ConcreteState ConcreteStateService::getNextState(StatesEnum currentState, int currentStateErrorCode) {
+ConcreteState* ConcreteStateService::getNextState(StatesEnum currentState, int currentStateErrorCode) {
     std::cout << "Error:" + std::to_string(currentStateErrorCode);
-    const ConcreteState *nextState = _stateTransitionTable[currentState][currentStateErrorCode];
-    return *nextState;
+    ConcreteState *nextState = _stateTransitionTable[currentState][currentStateErrorCode];
+    return nextState;
 };

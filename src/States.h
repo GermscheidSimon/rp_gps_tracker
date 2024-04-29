@@ -52,6 +52,6 @@ public:
     int currentStateErrorCode = 0;
     StatesEnum currentState = INIT;
     ConcreteStateService(map<StatesEnum, map<int, ConcreteState*>> stateTransitionTable);
-    const ConcreteState getNextState(StatesEnum currentState, int currentStateErrorCode);
+    ConcreteState* getNextState(StatesEnum currentState, int currentStateErrorCode);
     void Initialize();
 };
