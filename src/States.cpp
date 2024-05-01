@@ -4,7 +4,10 @@
 #include <map>
 #include "string"
 #include "States.h"
+#include "pico/stdlib.h"
 
+#define UART_ID uart1
+#define PARITY  UART_PARITY_NONE
 using namespace std;
 
 
@@ -19,9 +22,57 @@ int Initial::run() {
     return 0;
 }
 
+
+void ReadingGPS::setup(    
+    uart_hw_t  *uart_id,
+    int buad_rate,
+    int data_bits,
+    int stop_bits,
+    int uart_rx,
+    int uart_tx
+){
+    uart_init(UART_ID, buad_rate);
+
+    gpio_set_function(uart_tx, GPIO_FUNC_UART);
+    gpio_set_function(uart_rx, GPIO_FUNC_UART);
+
+    uart_set_format(UART_ID, data_bits, stop_bits, PARITY);
+    uart_set_fifo_enabled(UART_ID, false);
+
+    // // Set up a RX interrupt
+    // // We need to set up the handler first
+    // // Select correct interrupt for the UART we are using
+    int UART_IRQ = UART_ID == uart0 ? UART0_IRQ : UART1_IRQ;
+
+    // And set up and enable the interrupt handlers
+    irq_set_exclusive_handler(UART_IRQ, on_uart_rx());
+    irq_set_enabled(UART_IRQ, true);
+
+    // Now enable the UART to send interrupts - RX only
+    uart_set_irq_enables(UART_ID, true, false);
+}
+
 // reading gps state will utilize the NEO-6m gps breakout board to retrieve NMEA sentences, serialize them.
 ReadingGPS::ReadingGPS() : ConcreteState("ReadingGPS", READGPS) {}
 int ReadingGPS::run() {
+    
+    // todo: eventually move this somewhere gooder
+    uart_inst_t* uart_channel = uart1;
+    int buad_rate = 9600;
+    int data_bits = 8;
+    int stop_bits = 1;
+    int uart_rx = 4;
+    int uart_tx = 5;
+    setup(
+        uart_channel,
+        buad_rate,
+        data_bits,
+        stop_bits,
+        uart_rx,
+        uart_tx
+    );
+
+
     std::cout << "ReadingGPS: " << name;
     return 0;
 }

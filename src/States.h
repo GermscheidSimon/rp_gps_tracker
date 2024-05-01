@@ -27,9 +27,21 @@ public:
 };
 
 class ReadingGPS : public ConcreteState {
+
 public:
+    
     ReadingGPS();
     int run();
+private:
+    void setup(
+        uart_inst_t *uart_id,
+        int buad_rate,
+        int data_bits,
+        int stop_bits,
+        int uart_rx,
+        int uart_tx
+    );
+    void on_uart_rx();
 };
 
 class EvaluateCoord : public ConcreteState {

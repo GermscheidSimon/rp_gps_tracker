@@ -54,14 +54,14 @@ int main() {
     // // Set up a RX interrupt
     // // We need to set up the handler first
     // // Select correct interrupt for the UART we are using
-    // int UART_IRQ = UART_ID == uart0 ? UART0_IRQ : UART1_IRQ;
+    int UART_IRQ = UART_ID == uart0 ? UART0_IRQ : UART1_IRQ;
 
-    // // And set up and enable the interrupt handlers
-    // irq_set_exclusive_handler(UART_IRQ, on_uart_rx);
-    // irq_set_enabled(UART_IRQ, true);
+     // And set up and enable the interrupt handlers
+    irq_set_exclusive_handler(UART_IRQ, on_uart_rx);
+    irq_set_enabled(UART_IRQ, true);
 
-    // // Now enable the UART to send interrupts - RX only
-    // uart_set_irq_enables(UART_ID, true, false);
+  // Now enable the UART to send interrupts - RX only
+     uart_set_irq_enables(UART_ID, true, false);
 
 
     stdio_init_all();
