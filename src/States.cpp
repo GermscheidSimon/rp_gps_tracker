@@ -23,8 +23,11 @@ int Initial::run() {
 }
 
 
+
+
+
+
 void ReadingGPS::setup(    
-    uart_hw_t  *uart_id,
     int buad_rate,
     int data_bits,
     int stop_bits,
@@ -42,29 +45,47 @@ void ReadingGPS::setup(
     // // Set up a RX interrupt
     // // We need to set up the handler first
     // // Select correct interrupt for the UART we are using
-    int UART_IRQ = UART_ID == uart0 ? UART0_IRQ : UART1_IRQ;
+    // int UART_IRQ = UART_ID == uart0 ? UART0_IRQ : UART1_IRQ;
 
-    // And set up and enable the interrupt handlers
-    irq_set_exclusive_handler(UART_IRQ, on_uart_rx());
-    irq_set_enabled(UART_IRQ, true);
+    // // And set up and enable the interrupt handlers
+    // irq_set_exclusive_handler(UART_IRQ, this->on_uart_rx);
+    // irq_set_enabled(UART_IRQ, true);
 
-    // Now enable the UART to send interrupts - RX only
-    uart_set_irq_enables(UART_ID, true, false);
+    // // Now enable the UART to send interrupts - RX only
+    // uart_set_irq_enables(UART_ID, true, false);
 }
+
+void ReadingGPS::on_uart_rx() {
+    char newNmeaMessage[200];
+    int i = 0;
+    if(uart_is_readable(UART_ID)){
+        while (i < 100) {
+            char ch = uart_getc(UART_ID);
+            newNmeaMessage[i] = ch;
+
+            if (i == 200) {
+                break;
+            }
+            newNmeaMessage[i++] = ch;
+        }
+
+        std::cout << "New Msg:" << std::string(newNmeaMessage);
+    } else {
+        std::cout << "Nothing to report\n";
+    };
+};
 
 // reading gps state will utilize the NEO-6m gps breakout board to retrieve NMEA sentences, serialize them.
 ReadingGPS::ReadingGPS() : ConcreteState("ReadingGPS", READGPS) {}
 int ReadingGPS::run() {
     
     // todo: eventually move this somewhere gooder
-    uart_inst_t* uart_channel = uart1;
     int buad_rate = 9600;
     int data_bits = 8;
     int stop_bits = 1;
     int uart_rx = 4;
     int uart_tx = 5;
     setup(
-        uart_channel,
         buad_rate,
         data_bits,
         stop_bits,
@@ -76,6 +97,8 @@ int ReadingGPS::run() {
     std::cout << "ReadingGPS: " << name;
     return 0;
 }
+
+
 
 // evaluate coordinates state will utilize the coordinate plus the previous coordinate (by default 0Lat 0Long) to see if the movement was detected
 EvaluateCoord::EvaluateCoord() : ConcreteState("EvaluateCoord", EVALCOORD) {}

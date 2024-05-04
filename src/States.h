@@ -2,6 +2,7 @@
 
 #include "map"
 #include "string"
+#include "pico/stdlib.h"
 
 using namespace std;
 
@@ -34,14 +35,13 @@ public:
     int run();
 private:
     void setup(
-        uart_inst_t *uart_id,
         int buad_rate,
         int data_bits,
         int stop_bits,
         int uart_rx,
         int uart_tx
     );
-    void on_uart_rx();
+    static void on_uart_rx();
 };
 
 class EvaluateCoord : public ConcreteState {
@@ -57,8 +57,6 @@ public:
 };
 
 class ConcreteStateService {
-
-
 public:
     map<StatesEnum, map<int, ConcreteState*>> _stateTransitionTable;
     int currentStateErrorCode = 0;
