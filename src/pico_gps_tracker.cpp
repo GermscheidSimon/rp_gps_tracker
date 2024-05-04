@@ -6,36 +6,24 @@
 #include <iostream>
 #include "hardware/uart.h"
 #include "States.h"
+#include "pico/bootrom.h"
 
 #define UART_ID uart1
 #define BUAD_RATE 9600
 #define DATA_BITS 8
 #define STOP_BITS 1
-#define PARITY    UART_PARITY_NONE
+#define PARITY  UART_PARITY_NONE
 
 #define UART_TX_PIN 4
 #define UART_RX_PIN 5
 
-// RX interrupt handler
-void on_uart_rx() {
-    char newNmeaMessage[200];
-    int i = 0;
-    if(uart_is_readable(UART_ID)){
-        while (i < 100) {
-            char ch = uart_getc(UART_ID);
-            newNmeaMessage[i] = ch;
+#define REBOOT_BUTTON 14
 
-            if (i == 200) {
-                break;
-            }
-            newNmeaMessage[i++] = ch;
-        }
-
-        std::cout << "New Msg:" << std::string(newNmeaMessage);
-    } else {
-        std::cout << "Nothing to report\n";
-    };
-};
+// debugging interrupt handler
+void external_user_interupt_callback(uint gpio, uint32_t event_mask) {
+    std::cout << "BUTTON PRESS";
+    reset_usb_boot(0,0);
+}
 
 int main() {
     std::string printString = "Hello from String literal\n";
@@ -48,30 +36,19 @@ int main() {
     const uint LED_PIN = PICO_DEFAULT_LED_PIN;
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
-    uart_set_format(UART_ID, DATA_BITS, STOP_BITS, PARITY);
-    uart_set_fifo_enabled(UART_ID, false);
-
-    // // Set up a RX interrupt
-    // // We need to set up the handler first
-    // // Select correct interrupt for the UART we are using
-    int UART_IRQ = UART_ID == uart0 ? UART0_IRQ : UART1_IRQ;
-
-     // And set up and enable the interrupt handlers
-    irq_set_exclusive_handler(UART_IRQ, on_uart_rx);
-    irq_set_enabled(UART_IRQ, true);
-
-  // Now enable the UART to send interrupts - RX only
-     uart_set_irq_enables(UART_ID, true, false);
-
 
     stdio_init_all();
     while (true) {
-        on_uart_rx();
-        gpio_put(LED_PIN, 1);
-        sleep_ms(250);
-        gpio_put(LED_PIN, 0);
-        sleep_ms(250);
-        sleep_ms(1000);
+
+        gpio_init(REBOOT_BUTTON);
+        // set gpio pin to input pin
+        gpio_set_dir(REBOOT_BUTTON, false);
+        gpio_pull_up(REBOOT_BUTTON);
+
+        // configure a callback function to handle interupt. Must have signature of void (*gpio_irq_callback_t)(uint gpio, uint32_t event_mask)
+        // GPIO_IRQ_EDGE_FALL is means the current over this gpio is FALLING due to in this example the pin being shorted to ground with a button. Shorting to pico pin 18 (GND)
+        gpio_set_irq_enabled_with_callback(REBOOT_BUTTON, GPIO_IRQ_EDGE_FALL, true, external_user_interupt_callback);
+
         ReadingGPS* _readingGPS = new ReadingGPS();
         EvaluateCoord* _evaluateCoord = new EvaluateCoord();
         Connect* _connect = new Connect();
