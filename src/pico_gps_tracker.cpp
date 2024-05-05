@@ -19,19 +19,13 @@
 
 #define REBOOT_BUTTON 14
 
-// debugging interrupt handler
+// Interupt Reboot handler. On pin 14 pull down pico will reboot in BOOTSEL mode. 
 void external_user_interupt_callback(uint gpio, uint32_t event_mask) {
     std::cout << "BUTTON PRESS";
     reset_usb_boot(0,0);
 }
 
 int main() {
-    std::string printString = "Hello from String literal\n";
-
-    uart_init(UART_ID, BUAD_RATE);
-
-    gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
-    gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
 
     const uint LED_PIN = PICO_DEFAULT_LED_PIN;
     gpio_init(LED_PIN);
@@ -40,33 +34,42 @@ int main() {
     stdio_init_all();
     while (true) {
 
+
         gpio_init(REBOOT_BUTTON);
         // set gpio pin to input pin
         gpio_set_dir(REBOOT_BUTTON, false);
         gpio_pull_up(REBOOT_BUTTON);
 
-        // configure a callback function to handle interupt. Must have signature of void (*gpio_irq_callback_t)(uint gpio, uint32_t event_mask)
+        // configure a callback function to handle reboot interupt. Must have signature of void (*gpio_irq_callback_t)(uint gpio, uint32_t event_mask)
         // GPIO_IRQ_EDGE_FALL is means the current over this gpio is FALLING due to in this example the pin being shorted to ground with a button. Shorting to pico pin 18 (GND)
         gpio_set_irq_enabled_with_callback(REBOOT_BUTTON, GPIO_IRQ_EDGE_FALL, true, external_user_interupt_callback);
 
+
+        //TODO: move this somewhere better. 
         ReadingGPS* _readingGPS = new ReadingGPS();
         EvaluateCoord* _evaluateCoord = new EvaluateCoord();
         Connect* _connect = new Connect();
 
+        // Enter initial loop, no error state will result in Reading GPS 
         map<int, ConcreteState*> Init = {
             {0, _readingGPS}
         };
 
+        // If sucessfully gathered GPS coords, proceed to Eval coord state
+        // if unable to lock on to satilite, continue trying to READ GPS
         map<int, ConcreteState*> ReadingGPS = {
             {0, _readingGPS},
             {1, _evaluateCoord}
         };
 
+        // If no movement detected return to Reading GPS
+        // If Movement detected proceed to Connect state 
         map<int, ConcreteState*> EvaluateCoord = {
             {0, _readingGPS},
             {1, _connect}
         };
 
+        // after passing on new coordinate data, begin reading GPS
         map<int, ConcreteState*> Connect = {
             {0, _readingGPS}
         };
@@ -80,9 +83,6 @@ int main() {
             { StatesEnum::CONNECT, Connect}
         };
 
-        std::string printString = "Hello from String literal\n";
-        printf("%s\n", printString.c_str());
         ConcreteStateService(stateTable).Initialize();
-
     };
 };

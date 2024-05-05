@@ -42,6 +42,8 @@ private:
         int uart_tx
     );
     static void on_uart_rx();
+    string nextSentence();
+    bool isValidNmea(string nmeaSent);
 };
 
 class EvaluateCoord : public ConcreteState {

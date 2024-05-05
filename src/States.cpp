@@ -24,7 +24,14 @@ int Initial::run() {
 
 
 
-
+// Function to calculate the checksum for the NMEA message
+std::string calculateChecksum(const std::string& message) {
+    int checksum = 0;
+    for (char c : message) {
+        checksum ^= c;
+    }
+    return "$" + message + "*" + std::to_string(checksum);
+}
 
 
 void ReadingGPS::setup(    
@@ -40,7 +47,10 @@ void ReadingGPS::setup(
     gpio_set_function(uart_rx, GPIO_FUNC_UART);
 
     uart_set_format(UART_ID, data_bits, stop_bits, PARITY);
-    uart_set_fifo_enabled(UART_ID, false);
+
+    string configuration = "PUBX,40,1000,0,0,0,0,0";
+    string fullMessage = calculateChecksum(configuration);
+    // uart_set_fifo_enabled(UART_ID, false);
 
     // // Set up a RX interrupt
     // // We need to set up the handler first
@@ -75,26 +85,64 @@ void ReadingGPS::on_uart_rx() {
     };
 };
 
+// I believe ths is I/O blocking while this loop is active kinda clunky but simple to work with the data
+// clears the buffer until the begining of a sentence then reads until
+string ReadingGPS::nextSentence() {
+    char newNmeaMessage[64];
+    int index = 0;
+    if(uart_is_readable(UART_ID)){
+        bool readingSentence = false;
+        while (true) {
+            char ch = uart_getc(UART_ID);
+
+            if(ch == '$') {
+                readingSentence = true;
+            }
+
+            if (readingSentence && ch == '\n' || index >= 64) {
+                break;
+            }
+
+            if(readingSentence) {
+                newNmeaMessage[index] = ch;
+                index++;
+            }
+        }
+        
+    } 
+    string result = std::string(newNmeaMessage);
+    return result;
+};
+
 // reading gps state will utilize the NEO-6m gps breakout board to retrieve NMEA sentences, serialize them.
 ReadingGPS::ReadingGPS() : ConcreteState("ReadingGPS", READGPS) {}
 int ReadingGPS::run() {
-    
-    // todo: eventually move this somewhere gooder
+    int numberOfRetreivedMsgs = 0;
+    string nmeaSentences[10];
+
+    // todo: eventually move this somewhere gooder?
     int buad_rate = 9600;
     int data_bits = 8;
     int stop_bits = 1;
-    int uart_rx = 4;
-    int uart_tx = 5;
-    setup(
-        buad_rate,
-        data_bits,
-        stop_bits,
-        uart_rx,
-        uart_tx
-    );
+    int uart_tx = 4;
+    int uart_rx = 5;
 
+    setup( buad_rate, data_bits, stop_bits, uart_rx, uart_tx );
 
-    std::cout << "ReadingGPS: " << name;
+    while (numberOfRetreivedMsgs < 10) {
+
+        string newMsg =  this->nextSentence();
+        if(newMsg.length() > 0) {
+            nmeaSentences[numberOfRetreivedMsgs] = newMsg;
+        }
+        numberOfRetreivedMsgs++;
+    }
+    
+    for (string msg : nmeaSentences) {
+        std:cout << "RETRUNED: " << msg << endl;
+    }
+    
+    std::cout << "ReadingGPS: " << name << endl;
     return 0;
 }
 
@@ -103,14 +151,14 @@ int ReadingGPS::run() {
 // evaluate coordinates state will utilize the coordinate plus the previous coordinate (by default 0Lat 0Long) to see if the movement was detected
 EvaluateCoord::EvaluateCoord() : ConcreteState("EvaluateCoord", EVALCOORD) {}
 int EvaluateCoord::run() {
-    std::cout << "EvaluateCoord: " << name;
+    std::cout << "EvaluateCoord: " << name << endl;
     return 0;
 }
 
 // used to control uplink to RP Zero. will first need to power on the PI Zero and then transmit data over Serial connection
 Connect::Connect() : ConcreteState("Connect", CONNECT) {}
 int Connect::run() {
-    std::cout << "Connect: " << name;
+    std::cout << "Connect: " << name << endl;
     return 0;
 }
 
@@ -121,7 +169,7 @@ ConcreteStateService::ConcreteStateService(map<StatesEnum, map<int, ConcreteStat
 
 
 void ConcreteStateService::Initialize() {
-    std::cout << "Starting State Machine: ";
+    std::cout << "Starting State Machine: " << endl;
     while (true) {
         ConcreteState* nextState = getNextState(currentState, currentStateErrorCode);
         std::cout << "Next State: " << nextState->name << "\n";
@@ -131,7 +179,7 @@ void ConcreteStateService::Initialize() {
 }
 
 ConcreteState* ConcreteStateService::getNextState(StatesEnum currentState, int currentStateErrorCode) {
-    std::cout << "Error:" + std::to_string(currentStateErrorCode);
+    std::cout << "Error:" + std::to_string(currentStateErrorCode)  << endl;
     ConcreteState *nextState = _stateTransitionTable[currentState][currentStateErrorCode];
     return nextState;
 };
