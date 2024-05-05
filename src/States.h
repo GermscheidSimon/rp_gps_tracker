@@ -3,6 +3,7 @@
 #include "map"
 #include "string"
 #include "pico/stdlib.h"
+#include <vector>
 
 using namespace std;
 
@@ -43,7 +44,8 @@ private:
     );
     static void on_uart_rx();
     string nextSentence();
-    bool isValidNmea(string nmeaSent);
+    vector<std::string> splitNmeaSentence(string nmeaSent);
+    bool isValidNmea(vector<std::string> nmeaSent);
 };
 
 class EvaluateCoord : public ConcreteState {

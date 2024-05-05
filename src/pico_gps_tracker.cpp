@@ -32,6 +32,8 @@ int main() {
     gpio_set_dir(LED_PIN, GPIO_OUT);
 
     stdio_init_all();
+    // allow a moment for gps module to initialize
+    sleep_ms(1000);
     while (true) {
 
 

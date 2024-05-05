@@ -1,15 +1,16 @@
 #include "States.h"
+#include <stdlib.h>
 #include <string>
 #include "iostream"
 #include <map>
 #include "string"
 #include "States.h"
 #include "pico/stdlib.h"
+#include "sstream"
+#include "vector"
 
 #define UART_ID uart1
 #define PARITY  UART_PARITY_NONE
-using namespace std;
-
 
 int ConcreteState::run() {
     return 1;
@@ -25,12 +26,14 @@ int Initial::run() {
 
 
 // Function to calculate the checksum for the NMEA message
-std::string calculateChecksum(const std::string& message) {
+const char* calculateChecksum(const char message[]) {
     int checksum = 0;
-    for (char c : message) {
-        checksum ^= c;
+    for (const char *c = message; c; ++c) {
+        checksum ^= *c;
     }
-    return "$" + message + "*" + std::to_string(checksum);
+    std::cout << char(checksum);
+    const char* result = '$' + message + '*' + char(checksum);
+    return result;
 }
 
 
@@ -48,21 +51,20 @@ void ReadingGPS::setup(
 
     uart_set_format(UART_ID, data_bits, stop_bits, PARITY);
 
-    string configuration = "PUBX,40,1000,0,0,0,0,0";
-    string fullMessage = calculateChecksum(configuration);
-    // uart_set_fifo_enabled(UART_ID, false);
+  
+    
+    const char configuration[] = "PUBX,40,1000,0,0,0,0,0\r\n";
+    const char* fullMessage = calculateChecksum(configuration);
 
-    // // Set up a RX interrupt
-    // // We need to set up the handler first
-    // // Select correct interrupt for the UART we are using
-    // int UART_IRQ = UART_ID == uart0 ? UART0_IRQ : UART1_IRQ;
+    while( !uart_is_writable(UART_ID)) {
+        std::cout << "waiting for uart TX available";
+        sleep_ms(1000);
+    } 
+  
+    sleep_ms(10000);
+    uart_puts(UART_ID, fullMessage);
 
-    // // And set up and enable the interrupt handlers
-    // irq_set_exclusive_handler(UART_IRQ, this->on_uart_rx);
-    // irq_set_enabled(UART_IRQ, true);
-
-    // // Now enable the UART to send interrupts - RX only
-    // uart_set_irq_enables(UART_ID, true, false);
+    
 }
 
 void ReadingGPS::on_uart_rx() {
@@ -78,12 +80,26 @@ void ReadingGPS::on_uart_rx() {
             }
             newNmeaMessage[i++] = ch;
         }
-
-        std::cout << "New Msg:" << std::string(newNmeaMessage);
     } else {
         std::cout << "Nothing to report\n";
     };
 };
+
+bool ReadingGPS::isValidNmea(std::vector<std::string> nmeaSent) {
+    if(nmeaSent.size() != 10) return false;
+    if(nmeaSent[0].substr(0,2) != "$G") return false; // all sentences should start with $GXXXX
+    return true;
+}
+
+std::vector<std::string> ReadingGPS::splitNmeaSentence(string nmeaSent) {
+    std::istringstream inputStream(nmeaSent);
+    std::vector<std::string> nmea_encoding_vector;
+    string nmeaElement;
+    while (std::getline(inputStream, nmeaElement, ',')) {
+        nmea_encoding_vector.push_back(nmeaElement);
+    }
+    return nmea_encoding_vector;
+}
 
 // I believe ths is I/O blocking while this loop is active kinda clunky but simple to work with the data
 // clears the buffer until the begining of a sentence then reads until
@@ -118,7 +134,7 @@ string ReadingGPS::nextSentence() {
 ReadingGPS::ReadingGPS() : ConcreteState("ReadingGPS", READGPS) {}
 int ReadingGPS::run() {
     int numberOfRetreivedMsgs = 0;
-    string nmeaSentences[10];
+    std::vector<std::string> nmeaSentences[10];
 
     // todo: eventually move this somewhere gooder?
     int buad_rate = 9600;
@@ -126,20 +142,24 @@ int ReadingGPS::run() {
     int stop_bits = 1;
     int uart_tx = 4;
     int uart_rx = 5;
+    
+    // by default neo-6m provices msgs at 1hz freq
+    int nextSentenceFreq_ms = 1000;
 
+    //initialize UART 
     setup( buad_rate, data_bits, stop_bits, uart_rx, uart_tx );
 
+    // build up 10 valid sentences for better precision 
     while (numberOfRetreivedMsgs < 10) {
-
         string newMsg =  this->nextSentence();
-        if(newMsg.length() > 0) {
-            nmeaSentences[numberOfRetreivedMsgs] = newMsg;
+        std::vector<std::string> deconstructedNmea = splitNmeaSentence(newMsg);
+         std::cout << "isValid:" << isValidNmea(deconstructedNmea) << "Sent: " << newMsg << endl;
+
+        if( isValidNmea(deconstructedNmea) ) {
+            nmeaSentences[numberOfRetreivedMsgs] = deconstructedNmea;
+            numberOfRetreivedMsgs++;
         }
-        numberOfRetreivedMsgs++;
-    }
-    
-    for (string msg : nmeaSentences) {
-        std:cout << "RETRUNED: " << msg << endl;
+        sleep_ms(nextSentenceFreq_ms);
     }
     
     std::cout << "ReadingGPS: " << name << endl;
