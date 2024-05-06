@@ -25,16 +25,6 @@ int Initial::run() {
 
 
 
-// Function to calculate the checksum for the NMEA message
-const char* calculateChecksum(const char message[]) {
-    int checksum = 0;
-    for (const char *c = message; c; ++c) {
-        checksum ^= *c;
-    }
-    std::cout << char(checksum);
-    const char* result = '$' + message + '*' + char(checksum);
-    return result;
-}
 
 
 void ReadingGPS::setup(    
@@ -52,41 +42,44 @@ void ReadingGPS::setup(
     uart_set_format(UART_ID, data_bits, stop_bits, PARITY);
 
   
-    
-    const char configuration[] = "PUBX,40,1000,0,0,0,0,0\r\n";
-    const char* fullMessage = calculateChecksum(configuration);
+    // this is broken now
+    const char configuration[] = "PUBX,40,1000,0,0,0,0,0*43\r\n";
+    // sleep_ms(10000);
+    std::cout << "initializing";
 
     while( !uart_is_writable(UART_ID)) {
         std::cout << "waiting for uart TX available";
         sleep_ms(1000);
     } 
   
-    sleep_ms(10000);
-    uart_puts(UART_ID, fullMessage);
+    // sleep_ms(10000);
+    uart_puts(UART_ID, configuration);
 
     
 }
 
-void ReadingGPS::on_uart_rx() {
-    char newNmeaMessage[200];
-    int i = 0;
-    if(uart_is_readable(UART_ID)){
-        while (i < 100) {
-            char ch = uart_getc(UART_ID);
-            newNmeaMessage[i] = ch;
 
-            if (i == 200) {
-                break;
-            }
-            newNmeaMessage[i++] = ch;
-        }
-    } else {
-        std::cout << "Nothing to report\n";
-    };
-};
+// interupt based read example
+// void ReadingGPS::on_uart_rx() {
+//     char newNmeaMessage[200];
+//     int i = 0;
+//     if(uart_is_readable(UART_ID)){
+//         while (i < 100) {
+//             char ch = uart_getc(UART_ID);
+//             newNmeaMessage[i] = ch;
+
+//             if (i == 200) {
+//                 break;
+//             }
+//             newNmeaMessage[i++] = ch;
+//         }
+//     } else {
+//         std::cout << "Nothing to report\n";
+//     };
+// };
 
 bool ReadingGPS::isValidNmea(std::vector<std::string> nmeaSent) {
-    if(nmeaSent.size() != 10) return false;
+    if(nmeaSent.size() < 0) return false; // if the sentence was void throw it out
     if(nmeaSent[0].substr(0,2) != "$G") return false; // all sentences should start with $GXXXX
     return true;
 }
@@ -103,6 +96,7 @@ std::vector<std::string> ReadingGPS::splitNmeaSentence(string nmeaSent) {
 
 // I believe ths is I/O blocking while this loop is active kinda clunky but simple to work with the data
 // clears the buffer until the begining of a sentence then reads until
+// TODO validate that End lines are being properly evaluated and not fed into returned sentence.
 string ReadingGPS::nextSentence() {
     char newNmeaMessage[64];
     int index = 0;
@@ -116,9 +110,10 @@ string ReadingGPS::nextSentence() {
             }
 
             if (readingSentence && ch == '\n' || index >= 64) {
+                readingSentence = false;
                 break;
             }
-
+ 
             if(readingSentence) {
                 newNmeaMessage[index] = ch;
                 index++;
@@ -153,7 +148,7 @@ int ReadingGPS::run() {
     while (numberOfRetreivedMsgs < 10) {
         string newMsg =  this->nextSentence();
         std::vector<std::string> deconstructedNmea = splitNmeaSentence(newMsg);
-         std::cout << "isValid:" << isValidNmea(deconstructedNmea) << "Sent: " << newMsg << endl;
+        std::cout << "isValid:" << isValidNmea(deconstructedNmea) << "Sent: " << newMsg << endl;
 
         if( isValidNmea(deconstructedNmea) ) {
             nmeaSentences[numberOfRetreivedMsgs] = deconstructedNmea;

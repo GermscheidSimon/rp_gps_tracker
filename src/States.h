@@ -42,7 +42,7 @@ private:
         int uart_rx,
         int uart_tx
     );
-    static void on_uart_rx();
+    //static void on_uart_rx();
     string nextSentence();
     vector<std::string> splitNmeaSentence(string nmeaSent);
     bool isValidNmea(vector<std::string> nmeaSent);
