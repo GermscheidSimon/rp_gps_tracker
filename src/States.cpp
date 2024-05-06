@@ -67,8 +67,7 @@ void ReadingGPS::setup(
         sleep_ms(1000);
     } 
 
-    for (int i = 0; i < 7; i++)
-    {
+    for (int i = 0; i < 7; i++) {
         printf("test %s, %d", configMsgs[i], i);
         uart_puts(UART_ID, configMsgs[i]);
         sleep_ms(1000);
@@ -98,7 +97,7 @@ void ReadingGPS::setup(
 
 bool ReadingGPS::isValidNmea(std::vector<std::string> nmeaSent) {
     if(nmeaSent.size() < 0) return false; // if the sentence was void throw it out
-    if(nmeaSent[0].substr(0,2) != "$G") return false; // all sentences should start with $GXXXX
+    if(nmeaSent[0] != "$GPRMC") return false; // all sentences should start with $GXXXX
     return true;
 }
 
@@ -127,12 +126,12 @@ string ReadingGPS::nextSentence() {
                 readingSentence = true;
             }
 
-            if (readingSentence && ch == '\n' || index >= 64) {
+            if (readingSentence && ch == '\n') {
                 readingSentence = false;
                 break;
             }
  
-            if(readingSentence) {
+            if(readingSentence && ch != '\n', ch != '\r') {
                 newNmeaMessage[index] = ch;
                 index++;
             }
@@ -145,6 +144,8 @@ string ReadingGPS::nextSentence() {
 
 // reading gps state will utilize the NEO-6m gps breakout board to retrieve NMEA sentences, serialize them.
 ReadingGPS::ReadingGPS() : ConcreteState("ReadingGPS", READGPS) {}
+
+
 int ReadingGPS::run() {
     int numberOfRetreivedMsgs = 0;
     std::vector<std::string> nmeaSentences[10];
@@ -157,7 +158,7 @@ int ReadingGPS::run() {
     int uart_rx = 5;
     
     // by default neo-6m provices msgs at 1hz freq
-    int nextSentenceFreq_ms = 1000;
+    int nextSentenceFreq_ms = 2000;
 
     //initialize UART 
     setup( buad_rate, data_bits, stop_bits, uart_rx, uart_tx );
