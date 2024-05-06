@@ -38,12 +38,27 @@ void ReadingGPS::setup(
 
     gpio_set_function(uart_tx, GPIO_FUNC_UART);
     gpio_set_function(uart_rx, GPIO_FUNC_UART);
-
+    uart_set_hw_flow(UART_ID, false, false);
     uart_set_format(UART_ID, data_bits, stop_bits, PARITY);
 
-  
-    // this is broken now
-    const char configuration[] = "PUBX,40,1000,0,0,0,0,0*43\r\n";
+    const char gll_off[] = "$PUBX,40,GLL,0,0,0,0,0,0*5C\r\n";
+    const char gsa_off[] = "$PUBX,40,GSA,0,0,0,0,0,0*4E\r\n";
+    const char gga_off[] = "$PUBX,40,GGA,0,0,0,0,0,0*5A\r\n";
+    const char gsv_off[] = "$PUBX,40,GSV,0,0,0,0,0,0*59\r\n";
+    const char zda_off[] = "$PUBX,40,ZDA,0,0,0,0,0,0*45\r\n";
+    const char vtg_off[] = "$PUBX,40,VTG,0,0,0,0,0,0*5F\r\n"; // fix checksum
+    const char rmc_on[]  = "$PUBX,40,RMC,0,1,0,0,0,0*47\r\n";
+
+    const char* configMsgs[7] = {
+        gga_off,
+        gll_off,
+        vtg_off,
+        gsa_off,
+        gsv_off,
+        zda_off,
+        rmc_on
+    };
+
     // sleep_ms(10000);
     std::cout << "initializing";
 
@@ -51,11 +66,14 @@ void ReadingGPS::setup(
         std::cout << "waiting for uart TX available";
         sleep_ms(1000);
     } 
-  
-    // sleep_ms(10000);
-    uart_puts(UART_ID, configuration);
 
-    
+    for (int i = 0; i < 7; i++)
+    {
+        printf("test %s, %d", configMsgs[i], i);
+        uart_puts(UART_ID, configMsgs[i]);
+        sleep_ms(1000);
+    }
+        
 }
 
 
