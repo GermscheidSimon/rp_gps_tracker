@@ -114,6 +114,8 @@ std::vector<std::string> ReadingGPS::splitNmeaSentence(string nmeaSent) {
 // I believe ths is I/O blocking while this loop is active kinda clunky but simple to work with the data
 // clears the buffer until the begining of a sentence then reads until
 // TODO validate that End lines are being properly evaluated and not fed into returned sentence.
+
+// TODO 2: uart_read_blocking may be more reliable to read until a full sentences is received
 string ReadingGPS::nextSentence() {
     char newNmeaMessage[64];
     int index = 0;
@@ -143,25 +145,23 @@ string ReadingGPS::nextSentence() {
 };
 
 // reading gps state will utilize the NEO-6m gps breakout board to retrieve NMEA sentences, serialize them.
-ReadingGPS::ReadingGPS() : ConcreteState("ReadingGPS", READGPS) {}
+
+ReadingGPS::ReadingGPS() : ConcreteState("ReadingGPS", READGPS) {
+    int buad_rate = 9600;
+    int data_bits = 8;
+    int stop_bits = 1;
+    int uart_tx = 4;
+    int uart_rx = 5;
+    setup( buad_rate, data_bits, stop_bits, uart_rx, uart_tx );
+}
 
 
 int ReadingGPS::run() {
     int numberOfRetreivedMsgs = 0;
     std::vector<std::string> nmeaSentences[10];
 
-    // todo: eventually move this somewhere gooder?
-    int buad_rate = 9600;
-    int data_bits = 8;
-    int stop_bits = 1;
-    int uart_tx = 4;
-    int uart_rx = 5;
-    
     // by default neo-6m provices msgs at 1hz freq
     int nextSentenceFreq_ms = 2000;
-
-    //initialize UART 
-    setup( buad_rate, data_bits, stop_bits, uart_rx, uart_tx );
 
     // build up 10 valid sentences for better precision 
     while (numberOfRetreivedMsgs < 10) {
@@ -173,7 +173,7 @@ int ReadingGPS::run() {
             nmeaSentences[numberOfRetreivedMsgs] = deconstructedNmea;
             numberOfRetreivedMsgs++;
         }
-        sleep_ms(nextSentenceFreq_ms);
+        sleep_ms(nextSentenceFreq_ms);// I think polling in this way, if you get to the end of the buffer it hands you a return line intead of waiting for one from the buffer.
     }
     
     std::cout << "ReadingGPS: " << name << endl;
