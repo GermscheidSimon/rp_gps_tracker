@@ -25,8 +25,6 @@ int Initial::run() {
 
 
 
-
-
 void ReadingGPS::setup(    
     int buad_rate,
     int data_bits,
@@ -101,6 +99,7 @@ bool ReadingGPS::isValidNmea(std::vector<std::string> nmeaSent) {
     return true;
 }
 
+// create vector containg each section of the nmea sentence 
 std::vector<std::string> ReadingGPS::splitNmeaSentence(string nmeaSent) {
     std::istringstream inputStream(nmeaSent);
     std::vector<std::string> nmea_encoding_vector;
@@ -216,4 +215,42 @@ ConcreteState* ConcreteStateService::getNextState(StatesEnum currentState, int c
     std::cout << "Error:" + std::to_string(currentStateErrorCode)  << endl;
     ConcreteState *nextState = _stateTransitionTable[currentState][currentStateErrorCode];
     return nextState;
+};
+
+// ddmm_mmmmm
+struct decimalDegreesMinutes_Minutes {
+    int degrees;
+    float minutes;
+};
+
+/**
+ * Example RMC Sentences consists of 10 sections. 
+ * $GPRMC,010530.00,A,0000.00000,N,0000.00000,W,6.367,76.77,050524
+*/
+class RMCNmeaSentence {
+    public:
+        decimalDegreesMinutes_Minutes latitude;
+        decimalDegreesMinutes_Minutes longitude;
+        RMCNmeaSentence(std::vector<std::string> sentence) {
+
+            std::string latitudeStr = sentence[4]; 
+            std::string longitudeStr = sentence[6];
+
+            latitude = getDegreesMinutes(latitudeStr);
+            longitude = getDegreesMinutes(longitudeStr);
+            
+
+        }
+        /**
+         * convert string containg positional information into struct containing numeric values
+         * the Nmea Sentence stores the position as ddmm.mmmmm
+         * dd (int) degrees
+         * mm.mmmmm (float) minutes 
+        */
+        decimalDegreesMinutes_Minutes getDegreesMinutes(std::string decimalPositionStr) {
+            int degInt = std::stoi(decimalPositionStr.substr(0,1));
+            float latMinutesFloat = std::stof(decimalPositionStr.substr(2,9));
+            return {degInt, latMinutesFloat};
+        }
+
 };
