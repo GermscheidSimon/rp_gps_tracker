@@ -12,6 +12,66 @@
 #define UART_ID uart1
 #define PARITY  UART_PARITY_NONE
 
+
+
+
+/*****MOVEEEE*/
+
+
+// ddmm.mmmmm
+struct decimalDegreesMinutes_Minutes {
+    int degrees;
+    double minutes;
+};
+
+/**
+ * Example RMC Sentences consists of 10 sections. 
+ * $GPRMC,010530.00,A,0000.00000,N,0000.00000,W,6.367,76.77,050524
+*/
+class RMCNmeaSentence {
+    public:
+        decimalDegreesMinutes_Minutes latitude;
+        decimalDegreesMinutes_Minutes longitude;
+        char lat_cardinal = 0;
+        char long_cardinal = 0;
+        bool tryParseSentence(std::vector<std::string> sentence) {
+
+            std::string latitudeStr = sentence[3]; 
+            lat_cardinal = sentence[4][0];
+            std::string longitudeStr = sentence[5];
+            long_cardinal = sentence[6][0];
+
+            latitude = getDegreesMinutes(latitudeStr);
+            longitude = getDegreesMinutes(longitudeStr);      
+
+            bool isValidCardinals = (lat_cardinal + long_cardinal) > 0;
+            bool isValidLatLong = (longitude.degrees + longitude.minutes + latitude.degrees + latitude.minutes) > 0; 
+            return isValidCardinals && isValidLatLong;
+        }
+        /**
+         * convert string containg positional information into struct containing numeric values
+         * the Nmea Sentence stores the Latitude coord as ddmm.mmmmm and longitude coord as dddmm.mmmmm
+         * dd (int) degrees
+         * mm.mmmmm (double) minutes 
+        */
+        decimalDegreesMinutes_Minutes getDegreesMinutes(std::string decimalPositionStr) {
+            // if the converstion fails return 0s 
+            int degInt = 0;
+            double minsDoub = 0;
+
+            if(decimalPositionStr.length() == 10) { // lat
+                degInt = std::stoi(decimalPositionStr.substr(0,2));
+                minsDoub = std::stod(decimalPositionStr.substr(2,9));
+            }
+            if(decimalPositionStr.length() == 11) { // long
+                degInt = std::stoi(decimalPositionStr.substr(0,3));
+                minsDoub = std::stod(decimalPositionStr.substr(3,10));
+            }
+            return {degInt, minsDoub};
+        }
+
+};
+/****MOVE */
 int ConcreteState::run() {
     return 1;
 }
@@ -93,6 +153,7 @@ void ReadingGPS::setup(
 //     };
 // };
 
+//check at a hight level if the sentnece is valid. 
 bool ReadingGPS::isValidNmea(std::vector<std::string> nmeaSent) {
     if(nmeaSent.size() < 0) return false; // if the sentence was void throw it out
     if(nmeaSent[0] != "$GPRMC") return false; // all sentences should start with $GXXXX
@@ -168,10 +229,16 @@ int ReadingGPS::run() {
         std::vector<std::string> deconstructedNmea = splitNmeaSentence(newMsg);
         std::cout << "isValid:" << isValidNmea(deconstructedNmea) << "Sent: " << newMsg << endl;
 
-        if( isValidNmea(deconstructedNmea) ) {
+        if( !isValidNmea(deconstructedNmea) ) continue;
+
+        RMCNmeaSentence sentence = RMCNmeaSentence();
+        bool isParsed = sentence.tryParseSentence(deconstructedNmea);
+
+        if(isParsed){
             nmeaSentences[numberOfRetreivedMsgs] = deconstructedNmea;
             numberOfRetreivedMsgs++;
         }
+
         sleep_ms(nextSentenceFreq_ms);// I think polling in this way, if you get to the end of the buffer it hands you a return line intead of waiting for one from the buffer.
     }
     
@@ -215,42 +282,4 @@ ConcreteState* ConcreteStateService::getNextState(StatesEnum currentState, int c
     std::cout << "Error:" + std::to_string(currentStateErrorCode)  << endl;
     ConcreteState *nextState = _stateTransitionTable[currentState][currentStateErrorCode];
     return nextState;
-};
-
-// ddmm_mmmmm
-struct decimalDegreesMinutes_Minutes {
-    int degrees;
-    float minutes;
-};
-
-/**
- * Example RMC Sentences consists of 10 sections. 
- * $GPRMC,010530.00,A,0000.00000,N,0000.00000,W,6.367,76.77,050524
-*/
-class RMCNmeaSentence {
-    public:
-        decimalDegreesMinutes_Minutes latitude;
-        decimalDegreesMinutes_Minutes longitude;
-        RMCNmeaSentence(std::vector<std::string> sentence) {
-
-            std::string latitudeStr = sentence[4]; 
-            std::string longitudeStr = sentence[6];
-
-            latitude = getDegreesMinutes(latitudeStr);
-            longitude = getDegreesMinutes(longitudeStr);
-            
-
-        }
-        /**
-         * convert string containg positional information into struct containing numeric values
-         * the Nmea Sentence stores the position as ddmm.mmmmm
-         * dd (int) degrees
-         * mm.mmmmm (float) minutes 
-        */
-        decimalDegreesMinutes_Minutes getDegreesMinutes(std::string decimalPositionStr) {
-            int degInt = std::stoi(decimalPositionStr.substr(0,1));
-            float latMinutesFloat = std::stof(decimalPositionStr.substr(2,9));
-            return {degInt, latMinutesFloat};
-        }
-
 };
