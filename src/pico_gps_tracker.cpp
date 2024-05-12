@@ -25,6 +25,10 @@ int main() {
     stdio_init_all();
     // allow a moment for gps module to initialize
     sleep_ms(1000);
+    //TODO: move this somewhere better. 
+    ReadingGPS* _readingGPS = new ReadingGPS();
+    EvaluateCoord* _evaluateCoord = new EvaluateCoord();
+    Connect* _connect = new Connect();
     while (true) {
 
 
@@ -38,10 +42,7 @@ int main() {
         gpio_set_irq_enabled_with_callback(REBOOT_BUTTON, GPIO_IRQ_EDGE_FALL, true, external_user_interupt_callback);
 
 
-        //TODO: move this somewhere better. 
-        ReadingGPS* _readingGPS = new ReadingGPS();
-        EvaluateCoord* _evaluateCoord = new EvaluateCoord();
-        Connect* _connect = new Connect();
+
 
         // Enter initial loop, no error state will result in Reading GPS 
         map<int, ConcreteState*> Init = {

@@ -16,8 +16,6 @@
 
 
 /*****MOVEEEE*/
-
-
 // ddmm.mmmmm
 struct decimalDegreesMinutes_Minutes {
     int degrees;
@@ -35,6 +33,7 @@ class RMCNmeaSentence {
         char lat_cardinal = 0;
         char long_cardinal = 0;
         bool tryParseSentence(std::vector<std::string> sentence) {
+            
 
             std::string latitudeStr = sentence[3]; 
             lat_cardinal = sentence[4][0];
@@ -43,6 +42,9 @@ class RMCNmeaSentence {
 
             latitude = getDegreesMinutes(latitudeStr);
             longitude = getDegreesMinutes(longitudeStr);      
+            
+            std::cout << latitude.degrees << " Degrees "  << latitude.minutes << " Mins " << lat_cardinal << endl;
+            std::cout << longitude.degrees << " Degrees " << longitude.minutes << " Mins " << long_cardinal << endl;
 
             bool isValidCardinals = (lat_cardinal + long_cardinal) > 0;
             bool isValidLatLong = (longitude.degrees + longitude.minutes + latitude.degrees + latitude.minutes) > 0; 
@@ -70,12 +72,16 @@ class RMCNmeaSentence {
             return {degInt, minsDoub};
         }
 
+
+
 };
 /****MOVE */
+
+
 int ConcreteState::run() {
+    std::cout << "base run";
     return 1;
 }
-
 // Initial Is just really an entry point to start the state machine in motion just so I dont need a messy state table. should only be called one time and never looped back to
 Initial::Initial() : ConcreteState("Initial", INIT) {}
 int Initial::run() {
@@ -84,7 +90,7 @@ int Initial::run() {
 }
 
 
-
+// move to initial state
 void ReadingGPS::setup(    
     int buad_rate,
     int data_bits,
@@ -125,12 +131,15 @@ void ReadingGPS::setup(
         sleep_ms(1000);
     } 
 
+    std::cout << "configureing GPS module";
     for (int i = 0; i < 7; i++) {
-        printf("test %s, %d", configMsgs[i], i);
+       std::cout << "." << std::endl;
         uart_puts(UART_ID, configMsgs[i]);
         sleep_ms(1000);
     }
-        
+    uint32_t sleep = 5000;
+    sleep_ms(sleep);
+    std::cout << "Finished configuring GPS Module" << std::endl;
 }
 
 
@@ -179,8 +188,9 @@ std::vector<std::string> ReadingGPS::splitNmeaSentence(string nmeaSent) {
 string ReadingGPS::nextSentence() {
     char newNmeaMessage[64];
     int index = 0;
+    bool readingSentence = false;
+    sleep_ms(10);
     if(uart_is_readable(UART_ID)){
-        bool readingSentence = false;
         while (true) {
             char ch = uart_getc(UART_ID);
 
@@ -198,14 +208,13 @@ string ReadingGPS::nextSentence() {
                 index++;
             }
         }
-        
+        sleep_ms(5);
     } 
     string result = std::string(newNmeaMessage);
     return result;
 };
 
 // reading gps state will utilize the NEO-6m gps breakout board to retrieve NMEA sentences, serialize them.
-
 ReadingGPS::ReadingGPS() : ConcreteState("ReadingGPS", READGPS) {
     int buad_rate = 9600;
     int data_bits = 8;
@@ -217,24 +226,28 @@ ReadingGPS::ReadingGPS() : ConcreteState("ReadingGPS", READGPS) {
 
 
 int ReadingGPS::run() {
+    std::cout << "Running ReadingGPS\n";
+
     int numberOfRetreivedMsgs = 0;
     std::vector<std::string> nmeaSentences[10];
 
     // by default neo-6m provices msgs at 1hz freq
-    int nextSentenceFreq_ms = 2000;
-
+    int nextSentenceFreq_ms = 1000;
     // build up 10 valid sentences for better precision 
     while (numberOfRetreivedMsgs < 10) {
+        std::cout << "gettingNextSent";
         string newMsg =  this->nextSentence();
         std::vector<std::string> deconstructedNmea = splitNmeaSentence(newMsg);
         std::cout << "isValid:" << isValidNmea(deconstructedNmea) << "Sent: " << newMsg << endl;
 
-        if( !isValidNmea(deconstructedNmea) ) continue;
+        if( !isValidNmea(deconstructedNmea) ) {
+            continue;
+        }
 
         RMCNmeaSentence sentence = RMCNmeaSentence();
         bool isParsed = sentence.tryParseSentence(deconstructedNmea);
-
         if(isParsed){
+            std::cout << isParsed << endl;
             nmeaSentences[numberOfRetreivedMsgs] = deconstructedNmea;
             numberOfRetreivedMsgs++;
         }
@@ -242,7 +255,6 @@ int ReadingGPS::run() {
         sleep_ms(nextSentenceFreq_ms);// I think polling in this way, if you get to the end of the buffer it hands you a return line intead of waiting for one from the buffer.
     }
     
-    std::cout << "ReadingGPS: " << name << endl;
     return 0;
 }
 
@@ -251,6 +263,7 @@ int ReadingGPS::run() {
 // evaluate coordinates state will utilize the coordinate plus the previous coordinate (by default 0Lat 0Long) to see if the movement was detected
 EvaluateCoord::EvaluateCoord() : ConcreteState("EvaluateCoord", EVALCOORD) {}
 int EvaluateCoord::run() {
+    std::cout << "Run EvaluateCoord\n";
     std::cout << "EvaluateCoord: " << name << endl;
     return 0;
 }
