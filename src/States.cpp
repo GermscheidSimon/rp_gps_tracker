@@ -34,6 +34,7 @@ class RMCNmeaSentence {
         char long_cardinal = 0;
         bool tryParseSentence(std::vector<std::string> sentence) {
             
+            if(sentence.size() < 6) return false;
 
             std::string latitudeStr = sentence[3]; 
             lat_cardinal = sentence[4][0];
@@ -42,7 +43,7 @@ class RMCNmeaSentence {
 
             latitude = getDegreesMinutes(latitudeStr);
             longitude = getDegreesMinutes(longitudeStr);      
-            
+
             std::cout << latitude.degrees << " Degrees "  << latitude.minutes << " Mins " << lat_cardinal << endl;
             std::cout << longitude.degrees << " Degrees " << longitude.minutes << " Mins " << long_cardinal << endl;
 
@@ -232,7 +233,7 @@ int ReadingGPS::run() {
     std::vector<std::string> nmeaSentences[10];
 
     // by default neo-6m provices msgs at 1hz freq
-    int nextSentenceFreq_ms = 1000;
+    int nextSentenceFreq_ms = 1500;
     // build up 10 valid sentences for better precision 
     while (numberOfRetreivedMsgs < 10) {
         std::cout << "gettingNextSent";
